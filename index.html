@@ -54,6 +54,19 @@
               Anonymous for review
             </span>
           </div>
+
+          <div class="publication-links" style="margin-top: 1em;">
+            <span class="link-block">
+              <a href=""
+                  class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                    <i class="fas fa-code"></i>
+                </span>
+                <span>Code coming soon...</span>
+              </a>
+            </span>
+          </div>
+          
         </div>
       </div>
     </div>
@@ -86,7 +99,7 @@
           <div class="content has-text-justified">
             <img src="static/images/pipeline.png" style="width: 100%;">
             <p style="margin-top: 1em;">
-              For <strong>SR</strong>, edge and non-edge areas are processed separately using depth and luminance maps. Edge regions are classified by depth tile directions and adaptive neighbor queries to produce directional encodings (\(f_1\), \(f_2\), \(f_3\)), which index a LUT to retrieve coverage-aware filters. Non-edge regions are similarly mapped to directional features, followed by LUT-based filter retrieval. The retrieved filters are then applied to the low resolution (LR) image to reconstruct high-quality anti-aliased HR outputs \(I^{SR}_t\). A temporal accumulation module blends current and previous SR frames to produce the final result.<br/>
+              For <strong>SR</strong>, edge and non-edge areas are processed separately using depth and luminance maps. Edge regions are classified by depth tile directions and adaptive neighbor queries to produce directional encodings (\(f_1\), \(f_2\), \(f_3\)), which index a LUT to retrieve coverage-aware filters. Non-edge regions are similarly mapped to directional features, followed by LUT-based filter retrieval. The retrieved filters are then applied to the low resolution (LR) image to reconstruct high-quality anti-aliased HR outputs \(I^U_t\). A temporal accumulation module blends current and previous SR frames to produce the final result.<br/>
               For <strong>FG</strong>, lighting buffers are extracted and optical flow is estimated via a pyramid-based structure. Rendered MVs and estimated flow fields are merged and splated to obtain bidirectional MVs, which guide warping of adjacent SR frames to generate the interpolated frame \(I^{SR}_{t+0.5}\).
             </p>
           </div>
@@ -261,7 +274,7 @@
             </div>
           </div>
           <p>
-            We train a third MLP to predict the filter weight for non-edge patterns, denoted as \(F_{MLP_3}(f_1 = 0,f_2,f_3)\), and store its output weights in the LUT. This unified encoding design enables both edge (\(f_1 \in [1,12]\)) and non-edge (\(f_1 = 0\)) weights to be stored in a single \(13 \times 13 \times 13 \times 64\) LUT, enabling efficient inference and deployment.
+            We train a third MLP to predict the filter weights for non-edge patterns, denoted as \(F_{MLP_3}(f_1 = 0,f_2,f_3)\), where (\(f_2, f_3\)) are rounded to integer values to match the encoding structure introduced in the previous section. This unified encoding design enables both edge (\(f_1 \in [1,12]\)) and non-edge (\(f_1 = 0\)) weights to be stored in a single \(13 \times 13 \times 13 \times 64\) LUT, facilitating efficient inference and deployment.
           </p>
         </div>
         <!--/ Upsampling for Non-Edge Area. -->
@@ -275,14 +288,14 @@
         <p style="margin-left: 2.6em;">
           <span style="font-size:1.2em; line-height:0%">
             $$
-              W = \mathrm{clamp}^1_0(aW_M + bW_O + cW_D),
+              W_b = \mathrm{clamp}^1_0(a \cdot W_M + W_O + b \cdot W_D + c),
             $$
           </span>
         </p>
         <p style="margin-left: 2.6em;">
           <span style="font-size:1.2em; line-height:0%">
             $$
-              I^{sr}_t = W \cdot I^u_t + (1 - W) \cdot I'^{sr}_{t-1 \rightarrow t}. \label{eq:isr}
+              I^{sr}_t = W_b \cdot I^u_t + (1 - W_b) \cdot I'^{sr}_{t-1 \rightarrow t}. \label{eq:isr}
             $$
           </span>
         </p>
@@ -349,7 +362,13 @@
             To ensure motion consistency in frame interpolation, we adopt a patch-level (\(8 \times 8\)) selection strategy that chooses between rendered motion vectors and estimated optical flow based on similarity. This mitigates noise-induced artifacts common in per-pixel selection. In regions affected by dynamic shading or disocclusion, we further enhance robustness by discarding unreliable flow vectors and falling back to rendered MVs, thereby preserving both geometric integrity and temporal coherence.
           </p>
         </div>
-        <br/>
+
+        <h3 class="title is-4" style="margin-top: 1.8em;">Splatting and Image Reconstruction</h3>
+        <div class="content has-text-justified">
+          <p>
+            To generate the interpolated frame, we compute bidirectional motion vectors (\(M^U_{t \rightarrow t+0.5}\) and \(M^U_{t+1 \rightarrow t+0.5}\)) via MV splatting, refine them to suppress grid artifacts, and upsample to full resolution. These bidirectional MVs are then used to warp the adjacent SR frames, and the final output \(I^{SR}_{t+0.5}\) is synthesized by selecting the pixel with greater depth to resolve occlusion.
+          </p>
+        </div>
 
       </div>
     </div>
